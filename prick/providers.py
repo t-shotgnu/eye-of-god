@@ -57,6 +57,47 @@ class OpenAICompatibleProvider:
         self.settings = settings
         self.client = client
 
+    async def list_models(self) -> list[str]:
+        if self.settings.provider == "openai" and not self.settings.api_key.get_secret_value():
+            raise ExternalError(
+                "Enter an OpenAI API key or set PRICK_API_KEY before checking the connection."
+            )
+        base = (
+            "https://api.openai.com/v1"
+            if self.settings.provider == "openai"
+            else self.settings.api_base
+        )
+        headers = {}
+        if key := self.settings.api_key.get_secret_value():
+            headers["Authorization"] = f"Bearer {key}"
+        try:
+            response = await self.client.get(base + "/models", headers=headers, timeout=12)
+            response.raise_for_status()
+            rows = response.json()["data"]
+            if not isinstance(rows, list) or any(
+                not isinstance(row, dict)
+                or not isinstance(row.get("id"), str)
+                or not row["id"].strip()
+                or len(row["id"]) > 200
+                for row in rows
+            ):
+                raise ValueError("Invalid model list")
+            return sorted({row["id"] for row in rows})
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            reason = {
+                401: "Authentication failed. Check your API key.",
+                403: "Access denied. Check your API key's Models read permission and project access.",
+                429: "Rate limit reached. Wait briefly and retry.",
+            }.get(status, "Check the provider endpoint and credentials, then retry.")
+            raise ExternalError(f"Connection check returned HTTP {status}. {reason}") from None
+        except httpx.RequestError:
+            raise ExternalError(
+                "Connection check failed or timed out. Check the endpoint and network, then retry."
+            ) from None
+        except (KeyError, TypeError, ValueError):
+            raise ExternalError("The provider returned an invalid model list.") from None
+
     async def generate_structured(self, instructions: str, data: str, schema: type[T]) -> T:
         if not self.settings.model.strip():
             raise ExternalError("Set an AI model in Settings before generating a review.")

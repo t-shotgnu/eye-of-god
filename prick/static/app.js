@@ -3,7 +3,7 @@ const scaleLabels = {
   nitpicking: [[1, 'Merciful'], [4, 'Exacting'], [7, 'Unforgiving'], [10, 'Perfection alone']],
   conventions: [[1, 'Individuality permitted'], [4, 'Patterns respected'], [7, 'Deviations questioned'], [10, 'All things in their place']],
   tone: [[1, 'Serene'], [3, 'Benevolent'], [5, 'Impartial'], [7, 'Severe'], [8, 'Wrathful'], [9, 'Unbound'], [10, 'Beyond mortal restraint']],
-  archaic_english: [[0, 'Modern'], [2, 'Faintly ancient'], [4, 'Archaic'], [6, 'Shakespearean'], [8, 'Antiquated'], [10, 'The ancient tongue']],
+  archaic_english: [[0, 'Modern'], [2, 'Faintly ancient'], [4, 'Archaic'], [6, 'Shakespearean'], [8, 'Antiquated'], [10, 'Near-unrecognizable']],
 };
 
 function updateSlider(input) {
@@ -62,7 +62,7 @@ function syncInlineFindings() {
       comment.textContent = finding.dataset.explanation;
       const link = document.createElement('a');
       link.href = '#' + finding.id;
-      link.textContent = 'View finding and edit comment →';
+      link.textContent = changes.dataset.sandbox === 'true' ? 'View finding →' : 'View finding and edit comment →';
       body.append(badge, comment, link);
       cell.append(body);
       inline.append(cell);
@@ -83,6 +83,7 @@ function initialize() {
   }
   document.querySelectorAll('input[type="range"]').forEach(updateSlider);
   syncInlineFindings();
+  initializeModelDiscovery();
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
@@ -127,3 +128,77 @@ document.addEventListener('submit', event => {
     if (button) { button.disabled = true; button.textContent = 'Publishing to Azure DevOps…'; }
   }
 });
+
+
+// Provider calls stay server-side; credentials are never returned to the browser.
+async function discoverModels(region, refresh = false) {
+  const form = region.closest('form');
+  const status = region.querySelector('[data-ai-status]');
+  const button = region.querySelector('[data-check-ai]');
+  if (region.dataset.busy === 'true') return;
+  region.dataset.busy = 'true';
+  button.disabled = true;
+  status.textContent = refresh ? 'Checking connection and fetching models…' : 'Fetching available models…';
+  const data = new FormData(form);
+  data.set('refresh', String(refresh));
+  try {
+    const response = await fetch('/settings/ai/models', { method: 'POST', body: data });
+    if (!response.ok) throw new Error('Connection check could not complete. Reload the page and retry.');
+    const result = await response.json();
+    if (result.error) throw new Error(result.error);
+    status.textContent = region.dataset.prefetch === 'review' ? `${result.models.length} models fetched. Model-list access verified.` : result.message;
+    status.classList.remove('gold');
+    const suggestions = document.getElementById('available-models');
+    if (suggestions) {
+      suggestions.replaceChildren(...result.models.map(model => {
+        const option = document.createElement('option'); option.value = model; return option;
+      }));
+    }
+    const select = region.querySelector('[data-review-model]');
+    if (select) {
+      const selected = select.value;
+      const models = [...result.models];
+      if (selected && selected !== '__custom__' && !models.includes(selected)) models.push(selected);
+      const options = models.map(model => {
+        const option = document.createElement('option'); option.value = model; option.textContent = model; return option;
+      });
+      const defaultOption = select.options[0];
+      const customOption = select.querySelector('option[value="__custom__"]');
+      select.replaceChildren(defaultOption, ...options, customOption);
+      select.value = selected;
+    }
+  } catch (error) {
+    const suggestions = document.getElementById('available-models');
+    if (suggestions) suggestions.replaceChildren();
+    const select = region.querySelector('[data-review-model]');
+    if (select) {
+      const selected = select.value;
+      [...select.options].forEach(option => {
+        if (option.value && option.value !== '__custom__' && option.value !== selected) option.remove();
+      });
+    }
+    status.textContent = error.message;
+    status.classList.add('gold');
+  } finally {
+    region.dataset.busy = 'false';
+    button.disabled = false;
+  }
+}
+
+function initializeModelDiscovery() {
+  document.querySelectorAll('[data-ai-discovery]').forEach(region => {
+    if (region.dataset.initialized) return;
+    region.dataset.initialized = 'true';
+    region.querySelector('[data-check-ai]').addEventListener('click', () => discoverModels(region, true));
+    const select = region.querySelector('[data-review-model]');
+    if (select) select.addEventListener('change', () => {
+      region.querySelector('[data-custom-model]').classList.toggle('hidden', select.value !== '__custom__');
+    });
+    const provider = document.getElementById('provider');
+    const key = document.getElementById('api_key');
+    const canPrefetch = region.dataset.prefetch === 'settings'
+      ? provider?.value === 'compatible' || (provider?.value === 'openai' && key?.placeholder.startsWith('Configured'))
+      : region.dataset.demo !== 'true' && region.dataset.provider !== 'copilot';
+    if (canPrefetch) discoverModels(region);
+  });
+}

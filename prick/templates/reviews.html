@@ -6,7 +6,7 @@
   <article class="review-result" data-source-commit="{{ review.changes.source_commit }}" data-target-commit="{{ review.changes.target_commit }}" data-base-commit="{{ review.changes.base_commit }}" data-iteration="{{ review.changes.iteration }}">
     <div class="review-result-heading">
       <div><span class="eyebrow">{{ 'Latest review' if loop.first else 'Previous review' }} <span class="slash">/</span> {{ review.created.strftime('%d %b · %H:%M UTC') }}</span><p>{{ review.overview }}</p><small class="muted">{{ review.provider }} / {{ review.model or 'auto' }} <span class="meta-divider">·</span> Revision {{ review.changes.source_commit[:10] }}</small></div>
-      {% if review.findings %}<a class="button secondary small" href="/prs/{{ pr_id }}/reviews/{{ review.id }}/publish">Publish approved <span aria-hidden="true">→</span></a>{% endif %}
+      {% if review.findings and not sandbox %}<a class="button secondary small" href="/prs/{{ pr_id }}/reviews/{{ review.id }}/publish">Publish approved <span aria-hidden="true">→</span></a>{% endif %}
     </div>
     <div class="review-parameters"><span>Thoroughness <b>{{ review.options.thoroughness }}</b></span><span>Nitpicking <b>{{ review.options.nitpicking }}</b></span><span>Conventions <b>{{ review.options.conventions }}</b></span><span>Tone <b>{{ review.options.tone }}</b></span><span>Archaic English <b>{{ review.options.archaic_english }}</b></span></div>
     {% for warning in review.warnings %}<p class="notice warning">{{ warning }}</p>{% endfor %}
@@ -16,7 +16,7 @@
     {% for item in review.findings %}
     <article id="finding-{{ item.id }}" class="finding {{ 'ignored' if item.decision == 'ignored' else '' }}" data-file="{{ item.finding.file }}" data-side="{{ item.finding.side }}" data-line="{{ item.finding.line_start }}" data-explanation="{{ item.finding.explanation }}" data-severity="{{ item.finding.severity }}">
       <div class="finding-heading"><span class="finding-number">{{ '%02d'|format(loop.index) }}</span><span class="badge severity-{{ item.finding.severity }}">{{ item.finding.severity }}</span><code>{{ item.finding.file }}:{{ item.finding.line_start }}{% if item.finding.line_end != item.finding.line_start %}–{{ item.finding.line_end }}{% endif %}</code><span class="muted">{{ item.finding.side }} · {{ item.finding.category }}</span><span class="decision">{{ item.publish_state if item.publish_state != 'unpublished' else item.decision }}</span></div>
-      {% if item.publish_state == 'unpublished' %}
+      {% if sandbox %}<p class="comment-text">{{ item.comment }}</p>{% elif item.publish_state == 'unpublished' %}
       <form method="post" action="/prs/{{ pr_id }}/reviews/{{ review.id }}/findings/{{ item.id }}" hx-post="/prs/{{ pr_id }}/reviews/{{ review.id }}/findings/{{ item.id }}" hx-target="#reviews" hx-swap="outerHTML" hx-disabled-elt="find button">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         <label class="comment-label" for="comment-{{ item.id }}">Edit comment</label>
@@ -35,6 +35,6 @@
     {% endfor %}
   </article>
   {% else %}
-  <div class="empty-review"><img src="{{ url_for('static', path='observation.svg') }}" width="65" height="65" alt=""><span class="eyebrow">Awaiting judgement</span><p>Select the review parameters and seek judgement.<br>Every generated comment begins as a draft.</p></div>
+  <div class="empty-review"><img src="{{ url_for('static', path='observation.svg') }}" width="65" height="65" alt=""><span class="eyebrow">Awaiting judgement</span><p>Select the review parameters and seek judgement.<br>{{ 'Sandbox results stay local; publishing is disabled.' if sandbox else 'Every generated comment begins as a draft.' }}</p></div>
   {% endfor %}
 </section>

@@ -19,12 +19,13 @@
       <span class="wordmark">Eye of God<small>The all-seeing reviewer</small></span>
     </a>
     <nav aria-label="Main navigation">
-      <a href="/" class="{{ 'active' if request.url.path != '/settings' else '' }}" {% if request.url.path != '/settings' %}aria-current="page"{% endif %}>Pull requests</a>
+      <a href="/" class="{{ 'active' if request.url.path == '/' or request.url.path.startswith('/prs/') else '' }}" {% if request.url.path == '/' or request.url.path.startswith('/prs/') %}aria-current="page"{% endif %}>Pull requests</a>
+      <a href="/sandbox" class="{{ 'active' if request.url.path.startswith('/sandbox') else '' }}" {% if request.url.path.startswith('/sandbox') %}aria-current="page"{% endif %}>Sandbox</a>
       <a href="/settings" class="{{ 'active' if request.url.path == '/settings' else '' }}" {% if request.url.path == '/settings' %}aria-current="page"{% endif %}>Settings</a>
     </nav>
-    <span class="connection"><i></i>{{ 'Local demonstration' if settings.demo else settings.repository }}</span>
+    <span class="connection"><i></i>{{ 'Sandbox · ' ~ settings.provider if sandbox else 'Local demonstration' if settings.demo else settings.repository }}</span>
   </header>
-  {% if settings.demo %}
+  {% if settings.demo and not sandbox %}
   <div class="demo-banner"><span>DEMONSTRATION</span> Sample changes. Simulated AI and publishing. <a href="/settings">Connect Azure DevOps <span aria-hidden="true">↗</span></a></div>
   {% endif %}
   <div id="request-error" class="notice error hidden" role="alert"></div>

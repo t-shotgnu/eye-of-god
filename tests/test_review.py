@@ -104,6 +104,8 @@ async def test_demo_presentation_changes_without_changing_any_technical_finding(
         (5, 10),
         (1, 8),
         (10, 8),
+        (1, 10),
+        (10, 10),
     ]:
         result = await generate_review(
             pr, changes, ReviewOptions(tone=tone, archaic_english=archaic), Settings(), provider
@@ -119,6 +121,9 @@ async def test_demo_presentation_changes_without_changing_any_technical_finding(
         assert not result.warnings
     assert "thou" not in results[10, 0].findings[0].comment.lower()
     assert "Behold" in results[5, 10].findings[0].comment
+    assert "þonne" in results[5, 10].findings[0].comment
+    assert "oþþe" in results[5, 10].findings[0].comment
+    assert results[1, 10].findings[0].comment != results[10, 10].findings[0].comment
     assert results[1, 8].findings[0].comment != results[10, 8].findings[0].comment
     assert results[5, 0].findings[0].comment != results[5, 10].findings[0].comment
 

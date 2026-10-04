@@ -4,7 +4,9 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import secrets
+import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -12,7 +14,7 @@ from typing import Literal
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import Field, ValidationError
@@ -29,8 +31,11 @@ from prick.config import (
 from prick.demo import DemoAzure
 from prick.models import Model, Review, ReviewOptions, Summary
 from prick.prompts import SUMMARY_INSTRUCTIONS, limited_changes, review_data
-from prick.providers import create_provider
+from prick.providers import OpenAICompatibleProvider, create_provider
 from prick.review import finding_error, generate_review, same_revision
+from prick.sandbox import PR_ID as SANDBOX_PR_ID
+from prick.sandbox import SCOPE as SANDBOX_SCOPE
+from prick.sandbox import sample
 from prick.store import Store
 
 ROOT = Path(__file__).parent
@@ -72,6 +77,8 @@ def create_app(directory: Path | None = None) -> FastAPI:
         app.state.csrf = secrets.token_urlsafe(32)
         app.state.lock = asyncio.Lock()
         app.state.summary_lock = asyncio.Lock()
+        app.state.model_lock = asyncio.Lock()
+        app.state.model_catalog = {}
         async with httpx.AsyncClient(timeout=40, follow_redirects=False) as client:
             app.state.client = client
             yield
@@ -84,8 +91,6 @@ def create_app(directory: Path | None = None) -> FastAPI:
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         # Host validation also protects local instances from DNS rebinding.
-        import os
-
         allowed = {"localhost", "127.0.0.1", "::1", "testserver"}
         allowed.update(
             host.strip()
@@ -127,6 +132,36 @@ def create_app(directory: Path | None = None) -> FastAPI:
                 **context,
             },
             status_code=status,
+        )
+
+    def model_key(settings: Settings) -> str:
+        base = "https://api.openai.com/v1" if settings.provider == "openai" else settings.api_base
+        return hashlib.sha256(
+            json.dumps(
+                [
+                    settings.provider,
+                    base,
+                    settings.api_key.get_secret_value(),
+                ]
+            ).encode()
+        ).hexdigest()
+
+    def review_settings(request: Request, sandbox: bool = False) -> Settings:
+        current = app.state.settings
+        model = str(request.state.form.get("review_model", "")).strip()
+        if model == "__custom__":
+            model = str(request.state.form.get("review_model_custom", "")).strip()
+            if not model:
+                raise ExternalError("Enter a model ID for this review or choose the saved default.")
+        if len(model) > 200 or any(ord(char) < 32 for char in model):
+            raise ExternalError(
+                "Model ID must be at most 200 characters and contain no control characters."
+            )
+        return current.model_copy(
+            update={
+                "model": model or current.model,
+                "demo": False if sandbox else current.demo,
+            }
         )
 
     def azure(settings: Settings | None = None) -> AzureDevOps | DemoAzure:
@@ -178,6 +213,74 @@ def create_app(directory: Path | None = None) -> FastAPI:
     async def dashboard(request: Request) -> HTMLResponse:
         prs = await azure().list_prs()
         return render(request, "dashboard.html", prs=prs)
+
+    def sandbox_reviews(request: Request, notice: str = "", error: str = "") -> Response:
+        if not request.headers.get("HX-Request"):
+            return RedirectResponse("/sandbox", status_code=303)
+        return render(
+            request,
+            "reviews.html",
+            sandbox=True,
+            pr_id=SANDBOX_PR_ID,
+            reviews=app.state.store.reviews(SANDBOX_SCOPE, SANDBOX_PR_ID),
+            notice=notice,
+            error=error,
+        )
+
+    @app.get("/sandbox", response_class=HTMLResponse)
+    async def sandbox_page(request: Request) -> HTMLResponse:
+        pr, changes = sample()
+        return render(
+            request,
+            "details.html",
+            sandbox=True,
+            pr=pr,
+            prs=[pr],
+            changes=changes,
+            reviews=app.state.store.reviews(SANDBOX_SCOPE, SANDBOX_PR_ID),
+            pr_id=SANDBOX_PR_ID,
+        )
+
+    @app.post("/sandbox/review", response_class=HTMLResponse)
+    async def sandbox_review(request: Request) -> Response:
+        try:
+            options = ReviewOptions.model_validate(
+                {
+                    name: request.state.form.get(name, 0 if name == "archaic_english" else None)
+                    for name in ReviewOptions.model_fields
+                }
+            )
+            # Real configured AI, independent of the canned demo and Azure connection.
+            settings = review_settings(request, sandbox=True)
+            pr, changes = sample()
+            result = await generate_review(
+                pr, changes, options, settings, create_provider(settings, app.state.client)
+            )
+            result.scope = SANDBOX_SCOPE
+            app.state.store.save_review(result)
+            return sandbox_reviews(
+                request, notice="Sandbox review saved locally. Publishing is disabled."
+            )
+        except (ExternalError, ValueError) as exc:
+            message = (
+                "Review sliders must be integers from 1 to 10; Archaic English allows 0 to 10."
+                if isinstance(exc, ValidationError)
+                else str(exc)
+            )
+            if not request.headers.get("HX-Request"):
+                pr, changes = sample()
+                return render(
+                    request,
+                    "details.html",
+                    sandbox=True,
+                    pr=pr,
+                    prs=[pr],
+                    changes=changes,
+                    reviews=app.state.store.reviews(SANDBOX_SCOPE, SANDBOX_PR_ID),
+                    pr_id=SANDBOX_PR_ID,
+                    error=message,
+                )
+            return sandbox_reviews(request, error=message)
 
     @app.get("/prs/{pr_id}/summary", response_class=HTMLResponse)
     async def summary(request: Request, pr_id: int) -> HTMLResponse:
@@ -243,9 +346,9 @@ def create_app(directory: Path | None = None) -> FastAPI:
 
     @app.post("/prs/{pr_id}/review", response_class=HTMLResponse)
     async def review(request: Request, pr_id: int) -> Response:
-        settings = app.state.settings
         form = request.state.form
         try:
+            settings = review_settings(request)
             options = ReviewOptions.model_validate(
                 {
                     name: form.get(name, 0 if name == "archaic_english" else None)
@@ -393,6 +496,59 @@ def create_app(directory: Path | None = None) -> FastAPI:
     @app.get("/settings", response_class=HTMLResponse)
     async def settings_page(request: Request) -> HTMLResponse:
         return render(request, "settings.html", env_fields=ENV_FIELDS | SECRET_ENV)
+
+    @app.post("/settings/ai/models")
+    async def ai_models(request: Request) -> JSONResponse:
+        form = request.state.form
+        current = app.state.settings
+        values = current.model_dump()
+        # Buttons may check unsaved fields. Environment-managed values still win.
+        for name in ("provider", "api_base"):
+            if name in form and ENV_FIELDS[name] not in os.environ:
+                values[name] = str(form[name]).strip()
+        if SECRET_ENV["api_key"] not in os.environ:
+            if form.get("clear_api_key"):
+                values["api_key"] = ""
+            elif form.get("api_key"):
+                values["api_key"] = str(form["api_key"]).strip()
+        try:
+            settings = Settings.model_validate(values)
+            if settings.provider == "copilot":
+                raise ExternalError(
+                    "Model discovery and connection checks are available for OpenAI and compatible providers. For Copilot, enter a model ID or use auto."
+                )
+            key = model_key(settings)
+            async with app.state.model_lock:
+                cached = app.state.model_catalog.get(key)
+                if (
+                    form.get("refresh") == "true"
+                    or not cached
+                    or time.monotonic() - cached[0] > 300
+                ):
+                    app.state.model_catalog.pop(key, None)
+                    models = await OpenAICompatibleProvider(
+                        settings, app.state.client
+                    ).list_models()
+                    checked = time.time()
+                    # Keep only the active account's catalog in memory, never credentials.
+                    app.state.model_catalog = {key: (time.monotonic(), models, checked)}
+                else:
+                    _, models, checked = cached
+            return JSONResponse(
+                {
+                    "models": models,
+                    "provider": settings.provider,
+                    "checked_at": checked,
+                    "message": f"Connection verified. {len(models)} available model(s) fetched. Model-list access confirmed; review compatibility is checked when you invoke a review.",
+                }
+            )
+        except (ExternalError, ValueError) as exc:
+            error = (
+                "Invalid provider settings. Check the API endpoint."
+                if isinstance(exc, ValidationError)
+                else str(exc)
+            )
+            return JSONResponse({"models": [], "error": error})
 
     @app.post("/settings", response_class=HTMLResponse)
     async def update_settings(request: Request) -> HTMLResponse:

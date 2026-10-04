@@ -142,17 +142,21 @@ class DemoProvider:
                 if archaic <= 6
                 else "Thou shalt handle the exhausted retry budget before dividing: when remaining is zero, this backoff calculation doth raise ZeroDivisionError and interrupt delivery handling. Return a terminal result or raise a deliberate domain exception."
                 if archaic <= 9
-                else "Behold: when remaining is zero, the backoff calculation doth raise ZeroDivisionError, thereby interrupting delivery handling. Thou shalt handle the exhausted retry budget ere dividing; return a terminal result or raise a deliberate domain exception, lest delivery handling be interrupted."
+                else "Behold, gif remaining be nought, þonne of þe backoff reckoning ariseth ZeroDivisionError, wherethrough delivery handling is fordone. Ere þou dividest, forfend þe retry budget's waning unto nought; a terminal result forthsend, oþþe a deliberate domain exception uprear."
             )
             if tone <= 3:
                 wording = (
-                    "Pray, consider this safeguard. "
+                    "Ic bidde þe, þis ward y-wrought be. "
+                    if archaic == 10
+                    else "Pray, consider this safeguard. "
                     if archaic
                     else "Please consider adding this safeguard. "
                 ) + wording
             elif tone >= 8:
                 wording = (
-                    "Let this be remedied. "
+                    "Fie upon þis reckoning; amend þou it forthwith. "
+                    if archaic == 10
+                    else "Let this be remedied. "
                     if archaic
                     else "Zero is still not a valid divisor. Handle it explicitly. "
                 ) + wording
