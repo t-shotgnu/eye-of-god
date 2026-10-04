@@ -1,0 +1,14 @@
+{% for name, label, concept, description, minimum in [
+  ('thoroughness', 'Thoroughness', 'Depth of gaze', 'Obvious bugs → deep investigation', 1),
+  ('nitpicking', 'Nitpicking', 'Intolerance of imperfection', 'Important issues → tiny improvements', 1),
+  ('conventions', 'Conventions', 'Alignment', 'Functional focus → strict consistency', 1),
+  ('tone', 'Tone', 'Wrath', 'Friendly → blunt and sarcastic', 1),
+  ('archaic_english', 'Archaic English', 'Tongue of the ancients', 'Modern language → Early Modern English', 0)
+] %}
+<div class="slider-field {{ 'presentation-slider' if name in ['tone', 'archaic_english'] else '' }}">
+  <label for="{{ name }}"><span>{{ label }}<small>{{ concept }}</small></span><output id="{{ name }}-value" for="{{ name }}">{{ settings.defaults|attr(name) }}</output></label>
+  <input id="{{ name }}" name="{{ name }}" type="range" min="{{ minimum }}" max="10" step="1" value="{{ settings.defaults|attr(name) }}" aria-describedby="{{ name }}-description {{ name }}-level">
+  <div class="scale-caption"><span>{{ minimum }}</span><span id="{{ name }}-level" class="scale-label">{{ 'Modern' if name == 'archaic_english' and settings.defaults.archaic_english == 0 else '' }}</span><span>10</span></div>
+  <span id="{{ name }}-description" class="sr-only">{{ description }}</span>
+</div>
+{% endfor %}

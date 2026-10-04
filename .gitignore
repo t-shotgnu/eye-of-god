@@ -1,0 +1,11 @@
+.venv/
+.uv-cache/
+.uv-python/
+.data/
+.env
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+artifacts/

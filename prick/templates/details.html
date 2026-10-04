@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}#{{ pr.id }} · Eye of God{% endblock %}
+{% block content %}
+<div class="review-layout">
+  <aside class="pr-sidebar">
+    <div class="sidebar-inner"><div class="section-heading"><h2>Changes await</h2><span class="count">{{ prs|length }}</span></div><a class="back-link" href="/">← All pull requests</a>
+    {% for item in prs %}
+    <a class="pr-list-item {{ 'selected' if item.id == pr.id else '' }}" href="/prs/{{ item.id }}" {% if item.id == pr.id %}aria-current="page"{% endif %}><span class="mono">#{{ item.id }}<span class="sidebar-state">{{ 'draft' if item.draft else item.status }}</span></span><strong>{{ item.title }}</strong><small>{{ item.author }}</small></a>
+    {% endfor %}<div class="sidebar-instrument"><img src="{{ url_for('static', path='observation.svg') }}" width="82" height="82" alt=""><span>Under observation</span></div></div>
+  </aside>
+  <main id="main-content" class="pr-main">
+    <div class="detail-heading"><div><div class="card-meta"><span class="eyebrow">Pull request #{{ pr.id }}</span><span class="status">{{ pr.status|capitalize }}{{ ' · Draft' if pr.draft else '' }}</span></div><h1>{{ pr.title }}</h1><p class="author">{{ pr.author }}<span class="meta-divider">·</span><span>Created {{ pr.created.strftime('%d %b %Y, %H:%M UTC') }}{% if pr.updated %}<br>Updated {{ pr.updated.strftime('%d %b, %H:%M UTC') }}{% endif %}</span></p></div>{% if pr.url %}<a class="button secondary small" href="{{ pr.url }}" target="_blank" rel="noopener">Azure DevOps ↗</a>{% endif %}</div>
+    <div class="branches"><code>{{ pr.source_branch }}</code><span aria-hidden="true">→</span><code>{{ pr.target_branch }}</code><span class="mono revision">{{ changes.source_commit[:10] }}</span></div>
+    <section class="ai-summary"><span class="eyebrow">Observation <span class="ai-label">AI summary</span></span><div hx-get="/prs/{{ pr.id }}/summary" hx-trigger="load" hx-swap="innerHTML"><p class="loading"><span class="activity-point"></span>Observing the change</p></div></section>
+    {% if pr.description %}<details class="description"><summary>Pull request description</summary><p>{{ pr.description }}</p></details>{% endif %}
+    <div class="analysis-layout">
+      <div class="review-workspace">
+        <section class="changes-section" id="changes" data-source-commit="{{ changes.source_commit }}" data-target-commit="{{ changes.target_commit }}" data-base-commit="{{ changes.base_commit }}" data-iteration="{{ changes.iteration }}">
+          <nav class="diff-navigation" aria-label="Diff navigation"><a class="current" href="#changes">Files <span class="count">{{ changes.files|length }}</span></a><a href="#reviews">Findings</a><div class="diff-stats"><span class="added">+{{ changes.additions }}</span><span class="deleted">−{{ changes.deletions }}</span></div></nav>
+          <p class="muted diff-caption">Common ancestor → source <span class="meta-divider">·</span> Old / new line numbers</p>
+          <div class="file-navigation" aria-label="Changed files">{% for file in changes.files %}<a href="#file-{{ loop.index }}" data-open-file>{{ file.path }}</a>{% endfor %}</div>
+          {% for file in changes.files %}
+          <details class="file-diff" id="file-{{ loop.index }}" {% if loop.first %}open{% endif %}>
+            <summary><span class="file-name">{{ file.path }}</span><span class="badge">{{ file.change_type }}</span><span class="added">+{{ file.additions }}</span><span class="deleted">−{{ file.deletions }}</span></summary>
+            {% if file.old_path != file.path %}<p class="muted rename">Renamed from {{ file.old_path }}</p>{% endif %}
+            {% if file.skipped_reason %}<p class="notice warning">{{ file.skipped_reason }}</p>
+            {% elif not file.lines %}<p class="muted rename">No line-content changes; metadata, rename, or line endings only.</p>
+            {% else %}
+            <div class="diff-scroll"><table class="diff-table" aria-label="Diff for {{ file.path }}"><tbody>
+              {% for line in file.lines %}
+              <tr class="diff-{{ line.kind }}" data-file="{{ file.path }}" data-old="{{ line.old or '' }}" data-new="{{ line.new or '' }}"><td class="line-number">{{ line.old or '' }}</td><td class="line-number">{{ line.new or '' }}</td><td class="diff-marker">{{ '+' if line.kind == 'add' else '−' if line.kind == 'delete' else '' }}</td><td class="code-line"><pre>{{ line.text }}</pre></td></tr>
+              {% endfor %}
+            </tbody></table></div>
+            {% endif %}
+          </details>
+          {% endfor %}
+        </section>
+        {% include "reviews.html" %}
+      </div>
+      <aside class="review-controls">
+        <details class="controls-disclosure" open>
+        <summary class="controls-heading"><img src="{{ url_for('static', path='observation.svg') }}" width="35" height="35" alt=""><div><span class="eyebrow">Parameters of judgement</span><h2>Review configuration</h2></div></summary>
+        <form id="review-form" method="post" action="/prs/{{ pr.id }}/review" hx-post="/prs/{{ pr.id }}/review" hx-target="#reviews" hx-swap="outerHTML" hx-disabled-elt="find button" hx-indicator="#review-progress">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          {% include "sliders.html" %}
+          <p class="tone-note">Tone and Archaic English affect presentation only. Technical findings remain neutral.</p>
+          <button class="button primary full" type="submit">Seek judgement <span aria-hidden="true">→</span></button>
+          <div id="review-progress" class="htmx-indicator" role="status"><img class="observing-seal" src="{{ url_for('static', path='observation.svg') }}" width="29" height="29" alt=""><span>Observing the change</span></div>
+          <small class="muted provider-caption">{{ 'Demo fixture · no API calls' if settings.demo else settings.provider ~ ' · ' ~ (settings.model or 'model not set') }}<br>Publishing requires your approval.</small>
+        </form>
+        </details>
+      </aside>
+    </div>
+  </main>
+</div>
+{% endblock %}

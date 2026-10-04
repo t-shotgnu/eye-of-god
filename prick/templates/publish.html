@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Publish comments · Eye of God{% endblock %}
+{% block content %}
+<main id="main-content" class="publish-page">
+  <a class="back-link" href="/prs/{{ pr_id }}">← Back to review</a>
+  <div class="ceremonial-heading"><img src="{{ url_for('static', path='observation.svg') }}" width="65" height="65" alt=""><span class="eyebrow">Publish approved comments</span><h1>Deliver the verdict<span class="gold">.</span></h1></div>
+  <p>{{ approved|length }} approved comment(s) will be posted as review threads on <strong>PR #{{ pr_id }}</strong>{% if not settings.demo %} in {{ settings.scope }}{% endif %}.</p>
+  {% if settings.demo %}<p class="notice warning">Demonstration mode. Publishing is simulated; no comments are sent to Azure DevOps.</p>{% endif %}
+  <p class="muted publish-note">Only saved, approved comments appear here. The PR revision and comment text are checked again before publishing.</p>
+  {% for item in approved %}
+  <article class="publish-comment"><div class="finding-heading"><span class="badge severity-{{ item.finding.severity }}">{{ item.finding.severity }}</span><code>{{ item.finding.file }}:{{ item.finding.line_start }}–{{ item.finding.line_end }}</code><span class="muted">{{ item.finding.side }}</span></div><p class="comment-text">{{ item.comment }}</p></article>
+  {% else %}<p class="empty-review">No approved unpublished comments. Approve a saved draft first.</p>{% endfor %}
+  {% if approved %}
+  <form method="post" action="/prs/{{ pr_id }}/reviews/{{ review.id }}/publish">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="confirm" value="publish"><input type="hidden" name="digest" value="{{ digest }}"><input type="hidden" name="finding_id" value="{{ finding_id or '' }}">
+    <button class="button primary" type="submit">{{ 'Simulate publishing' if settings.demo else 'Publish' }} {{ approved|length }} approved comment(s) <span aria-hidden="true">→</span></button>
+    <a class="button secondary" href="/prs/{{ pr_id }}">Cancel</a>
+  </form>
+  {% endif %}
+</main>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% if error %}
+<div class="summary-unavailable">
+  <span class="eyebrow">The oracle is silent</span><p>{{ error }}</p>
+  <button class="button secondary small" hx-get="/prs/{{ pr_id }}/summary" hx-target="closest .summary-unavailable" hx-swap="outerHTML">Retry summary</button>
+</div>
+{% else %}
+<div class="summary-result">
+  <div class="badges"><span class="badge classification">{{ summary.classification }}</span><span class="badge">{{ summary.size }} change</span><span class="badge risk-{{ summary.risk }}">{{ summary.risk }} risk</span></div>
+  <p>{{ summary.description }}</p>
+  <div class="summary-metadata"><div class="diff-stats"><span>{{ changes.files|length }} file{{ 's' if changes.files|length != 1 else '' }}</span><span class="added">+{{ changes.additions }}</span><span class="deleted">−{{ changes.deletions }}</span>{% if partial %}<span class="partial-label" title="Large or unsupported files were excluded, or diff sampling was limited.">Partial coverage</span>{% endif %}</div>{% if updated %}<small class="muted">Updated {{ updated.strftime('%d %b, %H:%M UTC') }}</small>{% endif %}</div>
+</div>
+{% endif %}

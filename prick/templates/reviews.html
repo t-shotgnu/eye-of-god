@@ -1,0 +1,40 @@
+<section id="reviews" class="reviews-section" aria-live="polite">
+  {% if notice %}<p class="notice success" role="status">{{ notice }}</p>{% endif %}
+  {% if error %}<div class="notice error" role="alert"><span class="eyebrow">The oracle is silent</span><p>{{ error }}</p></div>{% endif %}
+  <div class="section-heading verdict-heading"><div><span class="eyebrow">The verdict</span><h2>{{ reviews[0].findings|length if reviews else 'No' }} imperfection{{ 's' if not reviews or reviews[0].findings|length != 1 else '' }}{{ ' revealed.' if reviews else ' revealed yet.' }}</h2></div>{% if reviews %}<span class="muted">Review findings</span>{% endif %}</div>
+  {% for review in reviews %}
+  <article class="review-result" data-source-commit="{{ review.changes.source_commit }}" data-target-commit="{{ review.changes.target_commit }}" data-base-commit="{{ review.changes.base_commit }}" data-iteration="{{ review.changes.iteration }}">
+    <div class="review-result-heading">
+      <div><span class="eyebrow">{{ 'Latest review' if loop.first else 'Previous review' }} <span class="slash">/</span> {{ review.created.strftime('%d %b · %H:%M UTC') }}</span><p>{{ review.overview }}</p><small class="muted">{{ review.provider }} / {{ review.model or 'auto' }} <span class="meta-divider">·</span> Revision {{ review.changes.source_commit[:10] }}</small></div>
+      {% if review.findings %}<a class="button secondary small" href="/prs/{{ pr_id }}/reviews/{{ review.id }}/publish">Publish approved <span aria-hidden="true">→</span></a>{% endif %}
+    </div>
+    <div class="review-parameters"><span>Thoroughness <b>{{ review.options.thoroughness }}</b></span><span>Nitpicking <b>{{ review.options.nitpicking }}</b></span><span>Conventions <b>{{ review.options.conventions }}</b></span><span>Tone <b>{{ review.options.tone }}</b></span><span>Archaic English <b>{{ review.options.archaic_english }}</b></span></div>
+    {% for warning in review.warnings %}<p class="notice warning">{{ warning }}</p>{% endfor %}
+    {% if review.findings %}
+    <nav class="finding-index" aria-label="Findings in this review">{% for item in review.findings %}<a href="#finding-{{ item.id }}"><span class="severity-dot severity-{{ item.finding.severity }}"></span><span>{{ loop.index|string }} <span class="slash">/</span> {{ item.finding.file }}:{{ item.finding.line_start }}</span></a>{% endfor %}</nav>
+    {% endif %}
+    {% for item in review.findings %}
+    <article id="finding-{{ item.id }}" class="finding {{ 'ignored' if item.decision == 'ignored' else '' }}" data-file="{{ item.finding.file }}" data-side="{{ item.finding.side }}" data-line="{{ item.finding.line_start }}" data-explanation="{{ item.finding.explanation }}" data-severity="{{ item.finding.severity }}">
+      <div class="finding-heading"><span class="finding-number">{{ '%02d'|format(loop.index) }}</span><span class="badge severity-{{ item.finding.severity }}">{{ item.finding.severity }}</span><code>{{ item.finding.file }}:{{ item.finding.line_start }}{% if item.finding.line_end != item.finding.line_start %}–{{ item.finding.line_end }}{% endif %}</code><span class="muted">{{ item.finding.side }} · {{ item.finding.category }}</span><span class="decision">{{ item.publish_state if item.publish_state != 'unpublished' else item.decision }}</span></div>
+      {% if item.publish_state == 'unpublished' %}
+      <form method="post" action="/prs/{{ pr_id }}/reviews/{{ review.id }}/findings/{{ item.id }}" hx-post="/prs/{{ pr_id }}/reviews/{{ review.id }}/findings/{{ item.id }}" hx-target="#reviews" hx-swap="outerHTML" hx-disabled-elt="find button">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label class="comment-label" for="comment-{{ item.id }}">Edit comment</label>
+        <textarea id="comment-{{ item.id }}" name="comment" rows="5" maxlength="12000" required>{{ item.comment }}</textarea>
+        <div class="finding-actions"><button class="button secondary small" name="decision" value="draft">Save draft</button><button class="button secondary small" name="decision" value="ignored">Dismiss</button><button class="button approve small" name="decision" value="approved">Approve comment</button>{% if item.decision == 'approved' %}<a class="button primary small" href="/prs/{{ pr_id }}/reviews/{{ review.id }}/publish?finding_id={{ item.id }}">Publish this →</a>{% endif %}</div>
+      </form>
+      {% else %}
+      <p class="comment-text">{{ item.comment }}</p>
+      {% if item.publish_state == 'published' %}<small class="published">{{ 'Simulated publish' if settings.demo else 'Published to Azure DevOps' }} · Thread #{{ item.thread_id }}</small>{% else %}<p class="notice warning">Posting may have succeeded. Check Azure DevOps manually. Re-posting is blocked to avoid duplicates.</p>{% endif %}
+      {% endif %}
+      <details class="evidence"><summary>Original neutral finding &amp; suggested change</summary><p>{{ item.finding.explanation }}</p>{% if item.finding.suggested_change %}<div class="suggested-change"><span class="eyebrow">Suggested change</span><pre>{{ item.finding.suggested_change }}</pre></div>{% endif %}</details>
+      <div class="finding-navigation"><button class="text-button" type="button" data-show-diff>View in diff ↑</button><span>{% if not loop.first %}<a href="#finding-{{ review.findings[loop.index0 - 1].id }}">← Previous</a>{% endif %}{% if not loop.last %}<a href="#finding-{{ review.findings[loop.index0 + 1].id }}">Next →</a>{% endif %}</span></div>
+    </article>
+    {% else %}
+    <div class="no-findings sacred-empty"><img src="{{ url_for('static', path='observation.svg') }}" width="84" height="84" alt=""><span class="eyebrow">{{ 'The work is without discernible flaw' if review.options.nitpicking == 10 else 'No fault was found' }}</span><h3>The work withstands scrutiny.</h3><p>No supported findings in the supplied changes.</p><small class="muted">No approval has been issued.</small></div>
+    {% endfor %}
+  </article>
+  {% else %}
+  <div class="empty-review"><img src="{{ url_for('static', path='observation.svg') }}" width="65" height="65" alt=""><span class="eyebrow">Awaiting judgement</span><p>Select the review parameters and seek judgement.<br>Every generated comment begins as a draft.</p></div>
+  {% endfor %}
+</section>
