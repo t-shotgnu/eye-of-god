@@ -67,7 +67,7 @@ npm run test:browser
 npm run publish
 ```
 
-The .NET tests cover review controls, response schemas, identifiers, diff budgets, Azure contracts, credentials, CSRF, changed previews, stale revisions, sandbox isolation and interrupted/partial publishing. Playwright uses installed Microsoft Edge, isolated demo data in `artifacts/browser-data`, and desktop/mobile viewports. Screenshots are saved in `artifacts/`. To use another browser, change `frontend/playwright.config.ts` and install its Playwright browser.
+The .NET tests cover review controls, response schemas, identifiers, diff budgets, Azure contracts, credentials, CSRF, changed previews, stale revisions, sandbox isolation and interrupted/partial publishing. Playwright builds and serves the frontend through Vite preview, proxies to an isolated demo API, and uses installed Microsoft Edge with desktop/mobile viewports. Browser data lives in `artifacts/browser-data`; screenshots are saved in `artifacts/`. Frontend regressions cover retries, PR state isolation, model lookup cancellation and diff navigation. To use another browser, change `frontend/playwright.config.ts` and install its Playwright browser.
 
 `npm run publish` builds React and creates a framework-dependent distribution in `artifacts/publish`. Run `dotnet artifacts/publish/EyeOfGod.Api.dll --urls http://127.0.0.1:8000` on a machine with the .NET 10 ASP.NET Core runtime. The output includes the React assets and Copilot CLI.
 

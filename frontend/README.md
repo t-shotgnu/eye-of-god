@@ -2,6 +2,28 @@
 
 The app uses [shadcn/ui](https://ui.shadcn.com/docs/installation/vite), Radix primitives, Tailwind CSS 4, and Lucide icons. Components are owned by this repository, under `src/components/ui`. `components.json` configures the registry and the `@/` import alias.
 
+## Source structure
+
+```text
+src/
+  main.tsx                  # Mount the application and load global styles
+  app/                      # Providers, layout, and routes
+  features/
+    pull-requests/          # Dashboard and PR summaries
+    reviews/                # PR/sandbox pages, review state, and publishing
+      components/           # Controls, findings, and review results
+      diff/                 # Diff rendering and navigation
+    settings/               # Settings page and typed form state
+      components/           # Settings and credential fields
+  components/               # Reusable UI compositions
+    ui/                     # Shared UI primitives
+  hooks/                    # API resource loading and model catalogs
+  lib/                      # HTTP client, error/date formatting, class names
+  types.ts                  # API response and domain types
+```
+
+Keep route pages focused on composition. Place feature state and behavior beside the feature, and promote code to `components`, `hooks`, or `lib` only when it is shared. Use `useConfiguration` for saved configuration; settings edits remain local until saved. `useApiResource` cancels obsolete loads and hides data from previous paths. PR and publish routes remount when their identity changes so draft controls and pending actions stay with their original review.
+
 ## Theme
 
 `src/theme.css` is the source of truth for colors, radii and focus colors. Use semantic tokens (`bg-background`, `text-muted-foreground`, `border-border`, `text-destructive`) rather than literal colors. The existing graphite/gold theme is the default. Buttons, inputs and select triggers use the standard 36px control height; compact buttons use `size="sm"`. Corners use the shared radius. Page layouts and diff presentation live in `src/style.css`, in the components cascade layer, so utility classes can override them deliberately.
@@ -48,4 +70,6 @@ Radix uses inline styles for slider geometry and overlay placement. The serving 
 
 ## Verify
 
-`npm run build` checks types and builds the production assets. `npm test` runs the integrated demo workflow and component checks. To test an already-running frontend, set `PRICK_BROWSER_URL` to its URL; this skips starting the test API server. The two tests named `shared` verify keyboard interaction and responsive layout without saving settings or generating reviews.
+`npm run build` checks types (including unused code) and builds the production assets. `npm run format` applies Prettier; `npm run format:check` verifies formatting.
+
+`npm test` builds the frontend and runs the integrated demo workflow and component checks against Vite's production preview on port 4173, proxying to an isolated demo API on port 8001. This tests the current assets independently of the backend's root-page handler. Restore .NET packages first with the root `npm run setup` command. To test an already-running frontend, set `PRICK_BROWSER_URL` to its URL; this skips starting both test servers. The two tests named `shared` verify keyboard interaction and responsive layout without saving settings or generating reviews.
