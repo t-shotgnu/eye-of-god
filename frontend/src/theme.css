@@ -41,23 +41,23 @@
 
 :root {
   color-scheme: dark;
-  --background: #101113;
-  --foreground: #eceae5;
-  --card: #181a1d;
+  --background: #0c0d10;
+  --foreground: #efe9db;
+  --card: #151619;
   --card-foreground: var(--foreground);
-  --popover: #202226;
+  --popover: #1c1c20;
   --popover-foreground: var(--foreground);
-  --primary: #c6ad79;
-  --primary-foreground: #181715;
-  --secondary: #202226;
+  --primary: #d8bd80;
+  --primary-foreground: #17130c;
+  --secondary: #25231f;
   --secondary-foreground: var(--foreground);
-  --muted: #27282b;
-  --muted-foreground: #a4a6ac;
-  --accent: #2b2d32;
+  --muted: #242426;
+  --muted-foreground: #aaa69e;
+  --accent: #302b22;
   --accent-foreground: var(--foreground);
   --destructive: #df9999;
-  --border: #303237;
-  --input: #4b4d54;
+  --border: #35312a;
+  --input: #575045;
   --ring: var(--primary);
   --success: #88bba1;
   --success-foreground: #aed7bd;

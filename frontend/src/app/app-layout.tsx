@@ -7,13 +7,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { config } = useConfiguration();
 
   return (
-    <>
+    <div className="app-shell">
       <header className="topbar">
         <Link className="brand" to="/">
           <img src="/observation.svg" alt="" width="38" height="38" />
           <span>
             Eye of God
-            <span className="brand-sub">The all-seeing reviewer</span>
+            <span className="brand-sub">Thy work shall be seen</span>
           </span>
         </Link>
         <nav aria-label="Main navigation">
@@ -46,8 +46,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <span>
           Eye of God <span className="muted">/ Azure Repos</span>
         </span>
-        <span>Human judgement comes last.</span>
+        <span className="footer-creed">
+          <span aria-hidden="true">✦</span> All is seen. Human judgement comes
+          last.
+        </span>
       </footer>
-    </>
+    </div>
   );
 }

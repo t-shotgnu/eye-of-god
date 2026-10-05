@@ -19,6 +19,7 @@ src/
     ui/                     # Shared UI primitives
   hooks/                    # API resource loading and model catalogs
   lib/                      # HTTP client, error/date formatting, class names
+  styles/                   # Layout rules and the divine visual theme
   types.ts                  # API response and domain types
 ```
 
@@ -26,7 +27,7 @@ Keep route pages focused on composition. Place feature state and behavior beside
 
 ## Theme
 
-`src/theme.css` is the source of truth for colors, radii and focus colors. Use semantic tokens (`bg-background`, `text-muted-foreground`, `border-border`, `text-destructive`) rather than literal colors. The existing graphite/gold theme is the default. Buttons, inputs and select triggers use the standard 36px control height; compact buttons use `size="sm"`. Corners use the shared radius. Page layouts and diff presentation live in `src/style.css`, in the components cascade layer, so utility classes can override them deliberately.
+`src/theme.css` is the source of truth for colors, radii and focus colors. Use semantic tokens (`bg-background`, `text-muted-foreground`, `border-border`, `text-destructive`) rather than literal colors. The divine theme pairs deep ink and illuminated gold with self-hosted Cinzel Decorative headings and SVG eye emblems. Buttons, inputs and select triggers use the standard 36px control height; compact buttons use `size="sm"`. Corners use the shared radius. `src/style.css` imports layout/diff rules from `src/styles/layout.css` and visual treatments from `src/styles/divine.css`; both use the components cascade layer, so utility classes can override them deliberately. Decorative imagery stays hidden from assistive technology, and the emblem's light animation respects reduced-motion preferences.
 
 ## Components
 

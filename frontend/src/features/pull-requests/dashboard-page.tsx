@@ -11,6 +11,7 @@ import { useApiResource } from "@/hooks/use-api-resource";
 import { formatTimestamp } from "@/lib/format";
 import type { PullRequest } from "@/types";
 import { SummaryView } from "./summary-view";
+import { DivineInvocation } from "./components/divine-invocation";
 
 export function DashboardPage() {
   const { data, error, reload } = useApiResource<PullRequest[]>("/prs");
@@ -25,7 +26,8 @@ export function DashboardPage() {
     ) ?? [];
   return (
     <main className="page dashboard">
-      <div className="page-heading">
+      <DivineInvocation />
+      <div className="page-heading" id="pull-request-register">
         <div>
           <span className="eyebrow">
             {config.settings.demo
