@@ -2,6 +2,43 @@
 
 A self-hosted AI code reviewer for Azure DevOps Services / Azure Repos Git. ASP.NET Core (.NET 10) provides the JSON API, SQLite persistence and provider adapters. React 19, TypeScript and Vite provide the interface. The production frontend is served by the same .NET process.
 
+## Screenshots
+
+The divine theme in an isolated demo workspace, with no credentials or paid AI calls.
+
+**Pull request dashboard**
+
+![Pull request dashboard with the radiant eye emblem and ceremonial headings](docs/screenshots/dashboard.png)
+
+<details>
+<summary>Review workspace</summary>
+
+Inspect numbered diffs, adjust review controls, and approve findings before publishing.
+
+![Review workspace with an inline finding and an approved comment](docs/screenshots/review.png)
+
+</details>
+
+<details>
+<summary>Settings</summary>
+
+Configure Azure DevOps, the AI provider, and review defaults.
+
+![Settings page showing connection, provider, and review controls](docs/screenshots/settings.png)
+
+</details>
+
+<details>
+<summary>Mobile review</summary>
+
+The same review workflow at a 390px viewport, with collapsible configuration controls.
+
+<img src="docs/screenshots/mobile-review.png" alt="Mobile review with numbered diff lines and finding approval controls" width="390" />
+
+</details>
+
+Regenerate these screenshots after setup with `npm --prefix frontend run screenshots`. The capture script uses a fresh demo workspace and waits for the self-hosted fonts and images to load.
+
 ## Run
 
 Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and [Node.js](https://nodejs.org/) 22.12+ (or 20.19+).
@@ -20,11 +57,11 @@ For frontend development, start the API with `npm start` and run `npm --prefix f
 
 In Settings, disable the demo and enter the Azure organization **name**, project, repository name or ID, and PAT. Reading needs code read access; posting review threads needs the relevant code/review thread write permission. The adapter uses REST API 7.1, immutable commit content, and PR iteration change tracking. Azure DevOps Server/custom hosts and PRs without iterations are unsupported.
 
-| Provider | Configuration |
-| --- | --- |
-| OpenAI | API key and a model available to your account; Chat Completions with structured output. |
-| OpenAI-compatible / local | Base URL including `/v1`, model ID, optional key. JSON object and prompt-only modes support servers without JSON Schema. |
-| GitHub Copilot | Official `GitHub.Copilot.SDK` .NET package, Copilot access, CLI login or supported GitHub token. Empty model uses `auto`. |
+| Provider                  | Configuration                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| OpenAI                    | API key and a model available to your account; Chat Completions with structured output.                                   |
+| OpenAI-compatible / local | Base URL including `/v1`, model ID, optional key. JSON object and prompt-only modes support servers without JSON Schema.  |
+| GitHub Copilot            | Official `GitHub.Copilot.SDK` .NET package, Copilot access, CLI login or supported GitHub token. Empty model uses `auto`. |
 
 Copilot's official SDK downloads its bundled CLI during the first build. `COPILOT_CLI_PATH` can select an external compatible executable. Sessions use an isolated working directory, disable tools, config discovery and skills, and deny permissions. See the [official SDK](https://github.com/github/copilot-sdk/tree/main/dotnet) and [authentication setup](https://docs.github.com/en/copilot/how-tos/copilot-sdk/setup/local-cli).
 

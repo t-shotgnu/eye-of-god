@@ -73,4 +73,6 @@ Radix uses inline styles for slider geometry and overlay placement. The serving 
 
 `npm run build` checks types (including unused code) and builds the production assets. `npm run format` applies Prettier; `npm run format:check` verifies formatting.
 
+`npm run screenshots` rebuilds the frontend and API, then captures the dashboard, review, settings, and mobile review for the root README under `docs/screenshots`. It launches temporary servers on available ports, uses a fresh demo workspace without user credentials, and removes that workspace afterward. The script is `scripts/capture-screenshots.mjs`.
+
 `npm test` builds the frontend and runs the integrated demo workflow and component checks against Vite's production preview on port 4173, proxying to an isolated demo API on port 8001. This tests the current assets independently of the backend's root-page handler. Restore .NET packages first with the root `npm run setup` command. To test an already-running frontend, set `PRICK_BROWSER_URL` to its URL; this skips starting both test servers. The two tests named `shared` verify keyboard interaction and responsive layout without saving settings or generating reviews.
