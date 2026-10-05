@@ -100,12 +100,57 @@ public class WorkflowTests
     }
 
     [Fact]
-    public void ApiFallbackReturnsNotFound()
+    public async Task ApiFallbackReturnsNotFound()
     {
         using var app = new TestApp();
         using var client = app.Client();
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/nonexistent")).StatusCode);
-        Assert.Contains("frame-ancestors 'none'", (await client.GetAsync("/health")).Headers.GetValues("Content-Security-Policy").Single());
+    }
+
+    [Fact]
+    public async Task ApplicationErrorsPreserveStatusAndMessageAsJson()
+    {
+        using var app = new TestApp();
+        using var client = app.Client();
+        using var response = await client.GetAsync("/api/prs/-1");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType!.MediaType);
+        Assert.Equal("Demo PR not found.",
+            JsonNode.Parse(await response.Content.ReadAsStringAsync())!["error"]!.GetValue<string>());
+    }
+
+    [Theory]
+    [InlineData("/health")]
+    [InlineData("/api/session")]
+    [InlineData("/api/nonexistent")]
+    [InlineData("/api/prs/-1")]
+    public async Task SecurityHeadersAreIncludedOnSuccessfulAndErrorResponses(string path)
+    {
+        using var app = new TestApp();
+        using var client = app.Client();
+        using var response = await client.GetAsync(path);
+        var policy = response.Headers.GetValues("Content-Security-Policy").Single();
+        Assert.Contains("frame-ancestors 'none'", policy);
+        Assert.Contains("style-src 'self' 'unsafe-inline'", policy);
+        Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
+    }
+
+    [Fact]
+    public async Task UnexpectedErrorsReturnJsonWithoutExposingExceptionDetails()
+    {
+        using var app = new TestApp
+        {
+            Respond = _ => throw new IOException("private-unexpected-error"),
+        };
+        using var client = app.Client();
+        using var response = await TestApp.Send(client, "POST", "/api/settings/ai/models",
+            new { provider = "compatible", api_base = "http://localhost:11434/v1", refresh = true });
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType!.MediaType);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("private-unexpected-error", body);
+        Assert.Equal("An unexpected server error occurred. Reload and try again.",
+            JsonNode.Parse(body)!["error"]!.GetValue<string>());
     }
 
     [Fact]

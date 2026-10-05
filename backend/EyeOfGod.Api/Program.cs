@@ -1,5 +1,6 @@
 using System.Text.Json;
 using EyeOfGod.Api;
+using EyeOfGod.Api.Middleware;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,9 @@ builder.Services.AddHttpClient("external", client => client.Timeout = TimeSpan.F
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 
 var app = builder.Build();
+
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseMiddleware<ErrorHandlingMiddleware>();
 
 _ = app.Services.GetRequiredService<Store>();
 app.MapControllers();
