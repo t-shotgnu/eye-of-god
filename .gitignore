@@ -9,3 +9,14 @@ __pycache__/
 dist/
 *.egg-info/
 artifacts/
+node_modules/
+bin/
+obj/
+frontend/dist/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.dotnet/
+.nuget/
+.npm-cache/
+.idea/

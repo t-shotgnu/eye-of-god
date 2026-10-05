@@ -1,86 +1,74 @@
 # Eye of God
 
-The all-seeing reviewer. A small, self-hosted AI review tool for **Azure DevOps Services / Azure Repos Git**. One FastAPI process, Jinja2 pages, locally bundled HTMX, httpx, and SQLite for saved review decisions. No frontend build, queue, or separate service.
+A self-hosted AI code reviewer for Azure DevOps Services / Azure Repos Git. ASP.NET Core (.NET 10) provides the JSON API, SQLite persistence and provider adapters. React 19, TypeScript and Vite provide the interface. The production frontend is served by the same .NET process.
 
-## Start with uv
+## Run
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.13+. uv installs Python if needed.
+Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and [Node.js](https://nodejs.org/) 22.12+ (or 20.19+).
 
 ```sh
-uv sync
-uv run uvicorn prick.app:app --host 127.0.0.1 --port 8000
+npm run setup
+npm run build
+npm start
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The default **demo workspace** has three sample PRs and a complete simulated review/publishing flow. No credentials or paid AI calls are needed for the demo. Its output is deterministic example data, not AI analysis.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The default demo has three PRs and simulated review/publishing. It needs no credentials or paid AI calls. Its findings are deterministic examples.
 
-## Connect your repository
+For frontend development, start the API with `npm start` and run `npm --prefix frontend run dev` in another terminal. Vite proxies `/api` and `/health` to the API. Open the URL printed by Vite. Rebuild the frontend to update the version served directly by .NET.
 
-In **Settings**, turn off demo mode and enter your organization **name**, project, repository name or ID, and PAT. Use code read permission to retrieve PRs and changes; posting threads also requires the relevant code/review thread write permission. The app uses Azure's REST API 7.1, immutable commit content, and PR iteration change tracking. Azure DevOps Server/custom hostnames and PRs without iterations are outside this MVP.
+## Configure
 
-Choose an AI provider and a model available to your account:
+In Settings, disable the demo and enter the Azure organization **name**, project, repository name or ID, and PAT. Reading needs code read access; posting review threads needs the relevant code/review thread write permission. The adapter uses REST API 7.1, immutable commit content, and PR iteration change tracking. Azure DevOps Server/custom hosts and PRs without iterations are unsupported.
 
-| Provider | Setup |
+| Provider | Configuration |
 | --- | --- |
-| OpenAI | API key + model ID. Uses the official Chat Completions endpoint and JSON Schema output. |
-| OpenAI-compatible / local | Base URL including `/v1`, model ID, optional key. For example an Ollama OpenAI-compatible server. Choose JSON object or prompt-only mode if the server lacks JSON Schema support. |
-| GitHub Copilot | `uv sync --extra copilot`, a Copilot-enabled account, and CLI authentication or a supported GitHub token in Settings. Blank model uses `auto`. |
+| OpenAI | API key and a model available to your account; Chat Completions with structured output. |
+| OpenAI-compatible / local | Base URL including `/v1`, model ID, optional key. JSON object and prompt-only modes support servers without JSON Schema. |
+| GitHub Copilot | Official `GitHub.Copilot.SDK` .NET package, Copilot access, CLI login or supported GitHub token. Empty model uses `auto`. |
 
-The optional Copilot adapter uses the **official `github-copilot-sdk`**, pinned to 0.3.0 in `uv.lock`, with its bundled CLI subprocess. It disables tools, project config discovery, and skills and denies permission requests. It does not use undocumented HTTP endpoints or reuse an OpenAI key as a Copilot token. If using an external CLI, set `COPILOT_CLI_PATH` to a compatible executable. Follow GitHub's [official authentication/setup guide](https://docs.github.com/en/copilot/how-tos/copilot-sdk/setup/local-cli) for supported token types and account requirements. The web app still runs in one process; Copilot's official transport adds its CLI child process when selected.
+Copilot's official SDK downloads its bundled CLI during the first build. `COPILOT_CLI_PATH` can select an external compatible executable. Sessions use an isolated working directory, disable tools, config discovery and skills, and deny permissions. See the [official SDK](https://github.com/github/copilot-sdk/tree/main/dotnet) and [authentication setup](https://docs.github.com/en/copilot/how-tos/copilot-sdk/setup/local-cli).
 
-Settings are saved to ignored `.data/settings.json`; reviews, edited comments, and summaries are stored in `.data/reviews.sqlite3`. Secrets are never filled into HTML password fields. Leave a credential blank to keep it; use its clear checkbox to remove it. The local JSON file contains plaintext credentials, so protect the data directory with your normal OS permissions. Environment-supplied credentials are not copied into it.
+**Check connection & refresh models** checks the entered provider/key, including unsaved edits. It fetches `/models`, makes no completion, and saves nothing. Catalogs are cached for five minutes by provider/endpoint/credential. Each PR and sandbox review may override the default model; its selection is saved with the review.
 
-Alternatively export `PRICK_AZURE_ORGANIZATION`, `PRICK_AZURE_PROJECT`, `PRICK_AZURE_REPOSITORY`, `PRICK_AZURE_PAT`, `PRICK_PROVIDER`, `PRICK_MODEL`, `PRICK_API_KEY`, `PRICK_API_BASE`, `PRICK_COPILOT_TOKEN`, and `PRICK_DEMO=false` before starting. Environment variables override the Settings screen. `.env.example` lists them; `.env` files are **not automatically loaded**. `PRICK_DATA_DIR` changes the local data directory.
+## Review
 
-## Review workflow
+1. Open a PR and inspect its summary and numbered diff.
+2. Choose independent Thoroughness, Nitpicking, Conventions and Tone values (1-10), plus Archaic English (0-10).
+3. Choose **Seek judgement**. Detection sees only the first three controls and repository instructions. A separate presentation call applies tone and archaic language to validated findings.
+4. Edit findings, save drafts, dismiss or explicitly approve comments. Approval saves the text locally.
+5. Open **Publish this** or **Publish approved**, inspect the saved text, then press **Publish**.
 
-1. Open a PR from the dashboard. Its cached classification uses a small diff sample and a short model response, rather than a full review.
-2. Inspect its metadata, numbered diff, and inline findings. Configure independent **Thoroughness**, **Nitpicking**, **Conventions**, and **Tone** values from 1–10, plus **Archaic English** from 0–10 (default 0).
-3. Press **Seek judgement**. Repository instructions and detection controls are assembled separately. Tone and Archaic English never enter the detection prompt: a separate presentation call rewrites validated findings when tone differs from 5 or Archaic English differs from 0. Original neutral findings and recommendations remain available for comparison.
-4. Edit comments, save drafts, dismiss findings, or explicitly approve them. Approving saves the text; it does not publish.
-5. Choose **Publish this** or **Publish approved**, inspect the exact saved comments in the preview, then press **Publish**. The app rejects changed previews, stale source/target revisions, invalid line locations, and already-published comments.
+The React interface includes file/finding navigation, inline diff findings, review history, revision warnings, connection checks, and responsive controls. Mobile review controls start collapsed. Every neutral finding and suggested change remains available for comparison with styled comments. Archaic English 10 requests dense medieval pastiche; identifiers and code remain verbatim.
 
-Each finding includes file, old/new side, range, severity, category, explanation, and optional suggestion. JSON is validated with Pydantic. Paths must exactly match supplied files, every cited line must be in the model's numbered diff, and ranges must touch a changed line. Invalid locations are rejected with a visible warning. Presentation output must preserve finding count, identities, protected identifiers, paths, inline code spans, and fenced code blocks. A failed rewrite retains the neutral wording. The neutral structured finding is never modified by either presentation control. AI text still needs your judgment, including checking that a rewrite preserves its technical meaning.
+Publishing checks the exact preview, repository/PR scope, source/target/base revisions, iteration, active status and changed-line locations. Results are persisted after each comment. A timeout or process interruption can leave a remote outcome unknown: such comments become **uncertain**, and reposting is blocked. Check Azure manually. Successful earlier posts remain recorded. There is no automatic retry of comment creation and Azure has no atomic batch revision precondition here.
 
-Publishing stores each result before moving to the next comment. A timeout or process interruption may mean Azure accepted a request without returning a response. Such comments are marked **uncertain** and blocked from re-posting. Check Azure manually; there is no automatic retry of comment creation. Previously successful comments remain recorded. Azure can still change during a batch; the revision check runs immediately before posting, but the remote API has no atomic batch/revision precondition here.
+## Sandbox
 
-Archaic English changes the surrounding natural language: 0 is modern, 2 is faintly ancient, 5 is noticeably archaic, 8 is strongly Early Modern English, and 10 is the ancient tongue. Code and API names such as `CancellationToken`, `Task.Delay`, `SendAsync`, `userId`, and `/api/users` stay verbatim. Existing settings and saved reviews load with Archaic English 0; no database migration is needed.
+Open `/sandbox` for an inert Python diff about downloads and retry pacing. Opening the page makes no AI calls. **Seek judgement** invokes the configured real provider even when demo mode is enabled. Azure credentials are unnecessary. Reviews persist under a separate local scope; approval and publishing are unavailable. Sample code is never executed.
 
-The interface uses a dark, ivory-and-gold observation glyph, a compact PR queue, revision-aware inline findings, file/finding navigation, and reduced-motion support. On mobile, review controls collapse so the diff remains close to the PR metadata. The Python import package and `PRICK_*` environment names stay compatible with existing setup commands.
+## Data And Environment
 
-## Practical limits
+Existing Python-version `.data/settings.json` and `.data/reviews.sqlite3` load directly: JSON property names, SQLite tables, review IDs and repository scopes are preserved. Missing Archaic English values default to zero. No data conversion or Python runtime is needed. `PRICK_DATA_DIR` selects another data directory. In this repository, the default remains the root `.data`; outside the repository, it is `.data` beneath the server's content root.
 
-This is a personal/internal tool: run **one worker** on localhost. For access from other machines, put it behind your own authenticated reverse proxy, configure forwarding appropriately, and add explicit comma-separated hostnames to `PRICK_ALLOWED_HOSTS`. The app has CSRF/origin checks, escaped output, a restrictive CSP, and host validation, but does not implement user accounts.
+Blank credential fields retain saved credentials; clear checkboxes remove them. API responses contain only configured/not-configured flags. The settings file contains plaintext credentials, so protect it using normal OS permissions. Environment-supplied credentials are never copied to disk.
 
-Changed code is sent to your chosen AI provider. Review coverage is deliberately bounded: at most 500 changed entries, content from the first 100 files, UTF-8 text under 400 KB and 8,000 lines per file, and roughly 70,000 characters of numbered diff for analysis. Summaries sample roughly 8,000 characters. Binary, oversized, non-UTF-8, and partially covered files are identified in the UI. Counts cover retrieved text only when files are excluded. The model gets the diff and user-supplied repository instructions; this MVP does not clone/index the whole repository or fetch arbitrary dependencies. A clean review is not a correctness guarantee.
+Existing `PRICK_*` variables override settings: `PRICK_DEMO`, `PRICK_AZURE_ORGANIZATION`, `PRICK_AZURE_PROJECT`, `PRICK_AZURE_REPOSITORY`, `PRICK_AZURE_PAT`, `PRICK_PROVIDER`, `PRICK_MODEL`, `PRICK_API_KEY`, `PRICK_API_BASE`, and `PRICK_COPILOT_TOKEN`. `.env.example` lists them; `.env` files are not automatically loaded. Environment-managed fields are disabled in the UI.
 
-## Development and verification
+Run one instance on localhost. For remote access, use an authenticated reverse proxy. The app has no user accounts.
+
+Changed code is sent to the selected AI provider. Coverage is bounded to 500 changed entries, content from the first 100 files, UTF-8 files under 400 KB and 8,000 lines, and about 70,000 characters of numbered diff. Summaries sample about 8,000 characters. Exclusions and partial coverage are displayed. Findings must cite exact supplied paths, visible old/new ranges and at least one changed line. Output schemas are validated locally in every provider mode. Presentation output must preserve finding identities and protected identifiers/code; failures retain neutral wording. Human review is still needed.
+
+## Verify And Publish
 
 ```sh
-uv sync --extra copilot
-uv run pytest
-uv run ruff check prick tests scripts
-uv run ruff format --check prick tests scripts
-uv build
+npm run build
+npm test
+npm run test:browser
+npm run publish
 ```
 
-The focused tests cover independent controls, tone/archaic isolation and identifier preservation, response parsing, exact path/side/range validation, prompt budgets, Azure response/rename/deletion/pagination mapping, provider HTTP payloads, SDK signatures, CSRF, credentials, preview changes, stale reviews, and interrupted/duplicate publishing.
+The .NET tests cover review controls, response schemas, identifiers, diff budgets, Azure contracts, credentials, CSRF, changed previews, stale revisions, sandbox isolation and interrupted/partial publishing. Playwright uses installed Microsoft Edge, isolated demo data in `artifacts/browser-data`, and desktop/mobile viewports. Screenshots are saved in `artifacts/`. To use another browser, change `frontend/playwright.config.ts` and install its Playwright browser.
 
-For a real-browser check, run the app in demo mode, then `uv run python scripts/browser_smoke.py`. The script uses installed Microsoft Edge, generates a demo review, edits and approves it, simulates publishing, checks settings and a mobile viewport, and saves screenshots to ignored `artifacts/`. It updates only local demo data. To use Chromium instead, change its browser channel and run `uv run playwright install chromium`.
+`npm run publish` builds React and creates a framework-dependent distribution in `artifacts/publish`. Run `dotnet artifacts/publish/EyeOfGod.Api.dll --urls http://127.0.0.1:8000` on a machine with the .NET 10 ASP.NET Core runtime. The output includes the React assets and Copilot CLI.
 
-Verification in this workspace used the demo, mocked Azure/AI HTTP contracts, and the installed Copilot SDK. Authenticated calls to your Azure organization and paid AI generation still require your credentials and were not exercised.
-
-The implementation was checked against Microsoft's [PR iteration changes](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-iteration-changes/get?view=azure-devops-rest-7.1), [commit item content](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/items/get?view=azure-devops-rest-7.1), and [thread creation](https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-threads/create?view=azure-devops-rest-7.1) documentation; GitHub's [Copilot SDK quickstart](https://docs.github.com/en/copilot/get-started/sdk-quickstart); and OpenAI's [structured outputs documentation](https://developers.openai.com/api/docs/guides/structured-outputs).
-
-HTMX 2.0.8 is bundled locally with its license in `prick/static/HTMX-LICENSE.txt`.
-
-## AI review sandbox
-
-Open `/sandbox` (or choose **Sandbox** in the navigation) to review a fixed, inert Python diff covering downloads, retry pacing, and tests. Set your provider, model, and credentials in Settings; demo mode may remain enabled and Azure credentials are not required. All five sliders use the same analysis/presentation pipeline as real PR reviews. Only clicking **Seek judgement** sends the sample to your configured AI; opening the page makes no AI calls. Reviews persist locally in a separate sandbox scope, with inline findings and previous parameter sets for comparison. Publishing and approval actions are unavailable, and sandbox review IDs cannot be used in normal PR publishing routes. Sample source is never executed.
-
-## Connection checks and review models
-
-In Settings, **Check connection & refresh models** tests the entered provider/key (including unsaved edits) via the [official OpenAI Models endpoint](https://developers.openai.com/api/reference/resources/models/methods/list). Environment overrides still take precedence. It does not save settings or generate a completion. Available model IDs are prefetched when saved credentials are configured and cached in memory for five minutes per active provider/endpoint/key; refresh forces a new check. Keys and raw provider error bodies are never returned to the UI. Compatible providers may also support `/models`; Copilot continues to accept an explicit model or `auto`.
-
-Each PR or sandbox review has **Model for this review**: select a fetched model or enter a model ID manually. The choice applies to both detection and presentation and is recorded in review history without changing the saved default used for summaries. Model-list access confirms authentication and connectivity, not inference quota or compatibility: choose a text model supporting Chat Completions and the configured structured output mode.
-
-Archaic English **10** deliberately produces near-unrecognizable medieval pastiche: dense archaic vocabulary, altered spelling, inflections, and inverted syntax throughout the comment. Levels 7–9 remain readable Early Modern English. Tone remains independent; identifiers, code, technical terms, and recommendations stay intact. Expand **Original neutral finding & suggested change** for the readable source. This affects newly generated reviews.
+Authenticated Azure/AI calls require your credentials. Automated verification uses demo data and mocked HTTP contracts; it does not spend inference quota or post to a real repository.

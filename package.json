@@ -1,0 +1,12 @@
+{
+  "name": "eye-of-god",
+  "private": true,
+  "scripts": {
+    "setup": "npm --prefix frontend ci && dotnet restore EyeOfGod.slnx",
+    "build": "npm --prefix frontend run build && dotnet build EyeOfGod.slnx",
+    "start": "dotnet run --project backend/EyeOfGod.Api --no-launch-profile --urls http://127.0.0.1:8000",
+    "test": "dotnet test EyeOfGod.slnx",
+    "test:browser": "npm --prefix frontend test",
+    "publish": "npm --prefix frontend run build && dotnet publish backend/EyeOfGod.Api -c Release -o artifacts/publish"
+  }
+}

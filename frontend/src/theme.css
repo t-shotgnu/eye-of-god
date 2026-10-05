@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-danger-muted: var(--danger-muted);
+  --color-info: var(--info);
+  --color-info-muted: var(--info-muted);
+  --color-nit: var(--nit);
+  --color-nit-muted: var(--nit-muted);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  color-scheme: dark;
+  --background: #101113;
+  --foreground: #eceae5;
+  --card: #181a1d;
+  --card-foreground: var(--foreground);
+  --popover: #202226;
+  --popover-foreground: var(--foreground);
+  --primary: #c6ad79;
+  --primary-foreground: #181715;
+  --secondary: #202226;
+  --secondary-foreground: var(--foreground);
+  --muted: #27282b;
+  --muted-foreground: #a4a6ac;
+  --accent: #2b2d32;
+  --accent-foreground: var(--foreground);
+  --destructive: #df9999;
+  --border: #303237;
+  --input: #4b4d54;
+  --ring: var(--primary);
+  --success: #88bba1;
+  --success-foreground: #aed7bd;
+  --success-muted: #1a2d24;
+  --warning: #e8c788;
+  --warning-foreground: #e0cd9d;
+  --warning-muted: #362d20;
+  --danger-muted: #342123;
+  --info: #a6c7e6;
+  --info-muted: #1c2e3a;
+  --nit: #c4b7da;
+  --nit-muted: #30283a;
+  --radius: 0.25rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    letter-spacing: 0;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

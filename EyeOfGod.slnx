@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="backend/EyeOfGod.Api/EyeOfGod.Api.csproj" />
+  <Project Path="tests/EyeOfGod.Tests/EyeOfGod.Tests.csproj" />
+</Solution>

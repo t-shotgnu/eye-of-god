@@ -1,9 +1,0 @@
-{% extends "fragment.html" if request.headers.get('HX-Request') else "base.html" %}
-{% block content %}
-<main id="main-content" class="error-page">
-  <img src="{{ url_for('static', path='observation.svg') }}" width="70" height="70" alt="">
-  <span class="eyebrow">Observation interrupted</span><h1>The oracle is silent<span class="gold">.</span></h1>
-  <p class="notice error" role="alert">{{ error }}</p>
-  <div class="error-actions"><a class="button" href="{{ request.url.path if request.method == 'GET' else '/' }}">Retry</a><a class="button secondary" href="/">Pull requests</a><a class="button secondary" href="/settings">Connection settings</a></div>
-</main>
-{% endblock %}
